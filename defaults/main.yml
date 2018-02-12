@@ -1,14 +1,25 @@
 ---
 
-nginx_create_nginx_conf: false
+nginx_install_repo: true
+
+nginx_create_nginx_conf: true
+
+nginx_use_letsencrypt: true
+
+nginx_manage_letsencrypt: true
 
 nginx_max_clients: 512
+
+nginx_ssl_protocols: "TLSv1.2"
+
+nginx_default_type: "application/octet-stream"
 
 nginx_http_params:
   sendfile: "on"
   tcp_nopush: "on"
   tcp_nodelay: "on"
   keepalive_timeout: "65"
+  gzip: "on"
 
 nginx_log_dir: "/var/log/nginx"
 nginx_access_log_name: "access.log"
@@ -16,6 +27,7 @@ nginx_error_log_name: "error.log"
 nginx_separate_logs_per_site: True
 nginx_ssl_dir: "/etc/nginx/ssl"
 letsencrypt_ssl_dir: "/etc/letsencrypt/live/"
+nginx_upstreams: []
 nginx_sites:
   - file_name: foo
     listen: 8080

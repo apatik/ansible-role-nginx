@@ -12,7 +12,7 @@ This role supports letsencrypt SSL for easy installation of https webservers
 Requirements
 ------------
 
-This role requires Ansible 1.4 or higher and platform requirements are listed
+This role requires Ansible 2.0 or higher and platform requirements are listed
 in the metadata file.
 
 Role Variables
@@ -21,12 +21,22 @@ Role Variables
 The variables that can be passed to this role and a brief description about
 them are as follows.
 
+    # Install the official Nginx Yum Repo. This is done by default, but can be disabled
+    # by setting this parameter to false
+    nginx_install_repo: true
+
     # Force creation of nginx.conf. Normally, nginx.conf is only written if it does not exist.
     # If this parameter is true, it will override the current nginx.conf
-    create_nginx_conf: true
+    nginx_create_nginx_conf: true
 
     # The max clients allowed
-    nginx_max_clients: 512                                
+    nginx_max_clients: 512
+
+    # Controls which SSL protocols Nginx will offer (assuming a site has SSL enabled)
+    nginx_ssl_protocols: "TLSv1.2"
+
+    # Set the default MIME type
+    nginx_default_type: "application/octet-stream"
 
     # A hash of the http paramters. Note that any
     # valid nginx http paramters can be added here.
@@ -36,8 +46,49 @@ them are as follows.
       tcp_nopush: "on"
       tcp_nodelay: "on"
       keepalive_timeout: "65"
-      access_log: "/var/log/nginx/access.log"
-      error_log: "/var/log/nginx/error.log"
+      gzip: "on"
+
+    # The directory in which Nginx should save its logs
+    nginx_log_dir: "/var/log/nginx"
+
+    # Name of the default access log file (will be appended to the nginx_log_dir above)
+    nginx_access_log_name: "access.log"
+
+    # Name of the default error log file (will be appended to the nginx_log_dir above)
+    nginx_error_log_name: "error.log"
+
+    # Controls whether nginx will create a separate log file per site
+    # Setting this to false causes logs for all sites to be placed
+    # in the default log files aboce
+    nginx_separate_logs_per_site: true
+
+    # The directory where nginx should save SSL certs & keys when using
+    # the "local" SSL provider (i.e., when providing pre-existing cert files)
+    nginx_ssl_dir: "/etc/nginx/ssl"
+
+    # A list of hashes that define any upstream servers to which Nginx can proxy connections
+    # Can be left out if not needed, as it defaults to empty.
+    nginx_upstreams:
+      - name: appserv
+        servers:
+          - 'appserv.example.com:8080'
+
+    # A list of strings that should placed inside the mail{} block, if
+    # mail proxying is desired
+    # Can be left out if not needed, as it defaults to empty.
+    nginx_mail_params:
+      - 'server_name mail.example.com'
+      - 'auth_http localhost:8008/auth-smtppass.php'
+
+    # A list of hashes that define any Mail servers that Nginx should proxy
+    # Can be left out if not needed, as it defaults to empty.
+    nginx_mail_servers:
+       - listen: '*:25'
+         protocol: 'smtp'
+         timeout: '5s'
+         proxy: 'on'
+         xclient: 'off'
+         smtp_auth: 'none'
 
     # A list of hashs that define the servers for nginx,
     # as with http parameters. Any valid server parameters
@@ -277,6 +328,47 @@ Note: the ssl key and cert should be available in the calling project in the dir
 		          ]
 		      ]
         }  
+
+8) Example of a Mail Proxy
+    - hosts: all
+
+      roles:
+      - { role: nginx,
+          nginx_separate_logs_per_site: true,
+          nginx_mail_params:
+            - 'server_name mail.andrewpatik.com'
+            - 'auth_http localhost:8008/auth-smtppass.php'
+          nginx_mail_servers:
+            - listen: '*:25'
+              protocol: 'smtp'
+              timeout: '5s'
+              proxy: 'on'
+              xclient: 'off'
+              smtp_auth: 'none'
+          nginx_sites: [
+            - file_name: bar.ssl,
+              server_name: "example.com www.example.com",
+              listen: 443,
+              ssl: {
+                  supplier: "letsencrypt",
+                  domains: [
+                    "example.com",
+                    "www.example.com"
+                  ],
+                  generate_redirect: true
+              },
+              locations: [
+                - name: /,
+                  lines: [
+                    - "try_files: $uri $uri/ /index.html"
+                              ]
+                - name: /images/,
+                  lines: [
+                    - "try_files: $uri $uri/ /index.html"
+                              ]
+                          ]
+                      ]
+        }
 
 Handlers
 --------

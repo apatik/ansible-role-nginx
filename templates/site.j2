@@ -6,21 +6,17 @@ server {
 	access_log {{ nginx_log_dir}}/{{ item.file_name}}-{{ nginx_access_log_name}};
 	error_log {{ nginx_log_dir}}/{{ item.file_name}}-{{ nginx_error_log_name}};
 {% endif %}
-
-listen 80;
-{% if not (item.ipv4_only is defined and item.ipv4_only == False) %}
-listen [::]:80;
+	listen 80;
+{% if item.ipv4_only is defined and item.ipv4_only|lower == true %}
+	listen [::]:80;
 {% endif %}
-
-server_name {{ item.server_name }};
-
+	server_name {{ item.server_name }};
 {% if item.ssl.supplier == "letsencrypt"%}
 	location /.well-known {
 		root /srv/www/letsencrypt/{{ item.file_name }}/;
 		include mime.types;
 	}
 {% endif %}
-
 	location / {
 	  return 301 https://$http_host$request_uri;
 	}
@@ -35,43 +31,45 @@ server {
 {% endif %}
 
 {% if item.ssl is defined and item.ssl != None %}
-listen {{ item.listen }} ssl;
-{% if not (item.ipv4_only is defined and item.ipv4_only == False) %}
-listen [::]:{{ item.listen }} ssl;
+	listen {{ item.listen }} ssl;
+{% if item.ipv4_only is defined and item.ipv4_only|lower == true %}
+	listen [::]:{{ item.listen }} ssl;
 {% endif %}
-{% if item.ssl.supplier == "local"%}
-ssl_certificate {{ nginx_ssl_dir }}/{{ item.ssl.certificate }};
-ssl_certificate_key {{ nginx_ssl_dir }}/{{ item.ssl.key }};
-{% elif item.ssl.supplier == "letsencrypt"%}
-ssl_certificate {{ letsencrypt_ssl_dir }}/{{ item.file_name }}/fullchain.pem;
-ssl_certificate_key {{ letsencrypt_ssl_dir }}/{{ item.file_name }}/privkey.pem;
-
+{% if item.ssl.supplier == "local" %}
+	ssl_certificate {{ nginx_ssl_dir }}/{{ item.ssl.certificate }};
+	ssl_certificate_key {{ nginx_ssl_dir }}/{{ item.ssl.key }};
+{% elif item.ssl.supplier == "manual" %}
+	ssl_certificate {{ item.ssl.certificate }};
+	ssl_certificate_key {{ item.ssl.key }};
+{% elif item.ssl.supplier == "letsencrypt" %}
+	ssl_certificate {{ letsencrypt_ssl_dir }}/{{ item.file_name }}/fullchain.pem;
+	ssl_certificate_key {{ letsencrypt_ssl_dir }}/{{ item.file_name }}/privkey.pem;
 {% endif %}
-# only access via secure https
-add_header Strict-Transport-Security max-age=31536000;
+	# only access via secure https
+	add_header Strict-Transport-Security max-age=31536000;
 {% else %}
-listen {{ item.listen }};
-{% if not (item.ipv4_only is defined and item.ipv4_only == False) %}
-listen [::]:{{ item.listen }};
+	listen {{ item.listen }};
+{% if item.ipv4_only is defined and item.ipv4_only|lower == true %}
+	listen [::]:{{ item.listen }};
 {% endif %}
 {% endif %}
 
 
 {% for k,v in item.iteritems() %}
 {% if k.find('locations') == -1 and k != 'file_name' and k != 'listen' and k != 'ssl' and k != 'ipv4_only' %}
-{{ k }} {{ v }};
+	{{ k }} {{ v }};
 {% endif %}
 {% endfor %}
 
 {% if item.locations is defined and item.locations != None %}
 {% for location in item.locations %}
-  location {{ location.name }} {
+ 	location {{ location.name }} {
 {% if location.lines is defined and location.lines != None %}
 {% for line in location.lines %}
-      {{ line }};
+		{{ line }};
 {% endfor %}
 {% endif %}
-  }
+	}
 {% endfor %}
 {% endif %}
 

@@ -1,5 +1,4 @@
 
-
 - name: set var nginx user account for Redhat
   set_fact:
     nginx_uid: "nginx"
@@ -12,30 +11,25 @@
     nginx_gid: "www-data"
   when: ansible_os_family == "Debian"
 
+- name: Copy the nginx repo (RedHat / CentOS)
+  copy: src=nginx.repo dest=/etc/yum.repos.d/nginx.repo
+  when: ansible_os_family == "RedHat" and (nginx_install_repo is defined and nginx_install_repo|lower == "true")
 
-- name: Install the selinux python module
-  yum: name=libselinux-python state=present
-  when: ansible_os_family == "RedHat"
+- name: Copy the nginx repo (Debian / Ubuntu)
+  template: src=nginx.list.j2 dest=/etc/apt/sources.list.d/nginx.list
+  when: ansible_os_family == "Debian" and (nginx_install_repo is defined and nginx_install_repo|lower == "true")
 
-- name: Copy the epel packages
-  copy: src=epel.repo dest=/etc/yum.repos.d/epel_ansible.repo
-  when: ansible_os_family == "RedHat"
-
-- name: Install the nginx packages
-  yum: name={{ item }} state=present
-  with_items: "{{redhat_pkg}}"
-  when: ansible_os_family == "RedHat"
-
-- name: Install the nginx packages
-  apt: name={{ item }} state=present update_cache=yes
-  with_items: "{{ubuntu_pkg}}"
-  environment: '{{ env }}'
-  when: ansible_os_family == "Debian"
+- name: Install the nginx package
+  package: name=nginx state=present
 
 - name: Install the certbot packages
   apt: name=certbot state=present update_cache=yes default_release=jessie-backports
   environment: '{{ env }}'
-  when: ansible_os_family == "Debian"
+  when: ansible_os_family == "Debian" and (nginx_use_letsencrypt is defined and nginx_use_letsencrypt|lower == "true")
+
+- name: Install the certbot packages
+  yum: name=certbot state=present
+  when: ansible_os_family == "RedHat" and (nginx_use_letsencrypt is defined and nginx_use_letsencrypt|lower == "true")
 
 - name: Create the directories for site specific configurations and ssl keys
   file: path=/etc/nginx/{{ item }} state=directory owner=root group=root mode=0755
@@ -58,10 +52,16 @@
   file: path=/srv/www/letsencrypt/{{item.file_name}} state=directory
   with_items:
     - "{{ nginx_sites }}"
+  when: nginx_use_letsencrypt is defined and nginx_use_letsencrypt|lower == "true"
 
 - name: Delete the links to delete site configurations for letsencrypt
   file: path=/etc/nginx/sites-enabled/{{ item.file_name }} state=absent src=/etc/nginx/sites-available/{{ item.file_name }}
   with_items: "{{nginx_sites}}"
+  when:
+    - item.ssl is defined
+    - item.ssl != None
+    - item.ssl.supplier == "letsencrypt"
+    - nginx_manage_letsencrypt
 
 - name: Create the configurations for sites
   template: src=site_letsencrypt.j2 dest=/etc/nginx/sites-available/{{ item.file_name }}
@@ -71,6 +71,7 @@
     - item.ssl is defined
     - item.ssl != None
     - item.ssl.supplier == "letsencrypt"
+    - nginx_manage_letsencrypt
 
 - name: Create the links to enable site configurations for letsencrypt
   file: path=/etc/nginx/sites-enabled/{{ item.file_name }} state=link src=/etc/nginx/sites-available/{{ item.file_name }}
@@ -80,6 +81,7 @@
     - item.ssl is defined
     - item.ssl != None
     - item.ssl.supplier == "letsencrypt"
+    - nginx_manage_letsencrypt
 
 - name: reload nginx
   service: name=nginx state=reloaded
@@ -98,6 +100,7 @@
     - item.ssl is defined
     - item.ssl != None
     - item.ssl.supplier == "letsencrypt"
+    - nginx_manage_letsencrypt
 
 - name: Copy SSL keys
   copy: src={{ item.ssl.local_keystore_dir }}/{{item.ssl.key }} dest={{ nginx_ssl_dir }}/{{ item.ssl.key }}  owner={{ nginx_uid }} group={{ nginx_gid }} mode=400 backup=no
@@ -130,10 +133,19 @@
 - name: Create the link for site enabled specific configurations
   file: path=/etc/nginx/sites-enabled/default state=link src=/etc/nginx/sites-available/default
 
+- name: Create Mail Proxy configuration
+  template: src=mail.conf.j2 dest=/etc/nginx/mail.conf
+  when: nginx_mail_params is defined and nginx_mail_servers is defined
+  notify:
+    - reload nginx
+
 - name: Create the configurations for sites
   template: src=site.j2 dest=/etc/nginx/sites-available/{{ item.file_name }}
   with_items: "{{nginx_sites}}"
 
+- name: Create the configuration for upstreams
+  template: src=upstream.j2 dest=/etc/nginx/conf.d/upstream-{{ item.name }}.conf
+  with_items: "{{nginx_upstreams}}"
 
 - name: Create the links to enable site configurations
   file: path=/etc/nginx/sites-enabled/{{ item.file_name }} state=link src=/etc/nginx/sites-available/{{ item.file_name }}
@@ -146,3 +158,4 @@
 
 - name: Add cronjob for letsencrypt bot
   cron: name="Update letsencrypt certs" minute="15" hour="3" job="/usr/bin/certbot renew --quiet --renew-hook \"/usr/sbin/service nginx reload\""
+  when: nginx_use_letsencrypt is defined and nginx_use_letsencrypt|lower == "true" and nginx_manage_letsencrypt

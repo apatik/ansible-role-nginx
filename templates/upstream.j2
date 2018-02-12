@@ -1,0 +1,15 @@
+#{{ ansible_managed }}
+upstream {{ item.name }} { 
+{% for k,v in item.iteritems() %}
+{% if k.find('servers') == -1 and k != 'name' %}
+	{{ k }} {{ v }};
+{% endif %}
+{% endfor %}
+
+{% if item.servers is defined and item.servers != None %}
+{% for server in item.servers %}
+ 	server {{ server }};
+{% endfor %}
+{% endif %}
+
+}

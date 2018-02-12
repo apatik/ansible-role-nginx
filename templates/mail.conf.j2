@@ -1,0 +1,16 @@
+#{{ ansible_managed }}
+mail {
+
+{% for line in nginx_mail_params %}
+	{{ line }};
+{% endfor %}
+
+{% for server in nginx_mail_servers %}
+	server {
+{% for k,v in server.iteritems() %}
+		{{ k }} {{ v }};
+{% endfor %}
+	}
+
+{% endfor %}
+}

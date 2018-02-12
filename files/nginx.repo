@@ -1,0 +1,6 @@
+[nginx]
+name=nginx repo
+baseurl=http://nginx.org/packages/centos/7/$basearch/
+gpgkey=https://nginx.org/keys/nginx_signing.key
+gpgcheck=1
+enabled=1
