@@ -1,0 +1,5 @@
+# Default Values for SmartOS
+nginx_uid: 'www'
+nginx_gid: 'www'
+nginx_config_dir: '/opt/local/etc/nginx'
+nginx_ssl_dir: '/opt/local/etc/nginx/ssl'

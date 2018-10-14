@@ -1,0 +1,5 @@
+# Default Values for Debian/Ubuntu
+nginx_uid: 'www-data'
+nginx_gid: 'www-data'
+nginx_config_dir: '/etc/nginx'
+nginx_ssl_dir: '/etc/nginx/ssl'

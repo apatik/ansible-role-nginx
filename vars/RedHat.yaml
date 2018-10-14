@@ -1,0 +1,5 @@
+# Default Values for RedHat/CentOS
+nginx_uid: 'nginx'
+nginx_gid: 'nginx'
+nginx_config_dir: '/etc/nginx'
+nginx_ssl_dir: '/etc/nginx/ssl'

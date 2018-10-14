@@ -1,18 +1,18 @@
 #{{ ansible_managed }}
-user              {{ nginx_uid }};
+user              {{ nginx_uid }} {{ nginx_gid }};
 
-worker_processes  {{ ansible_processor_count }};
+worker_processes  {{ nginx_worker_processes }};
 pid        /var/run/nginx.pid;
 
 
 events {
-    worker_connections  {{ nginx_max_clients }};
+	worker_connections  {{ nginx_max_clients }};
 }
 
 
 http {
 	ssl_protocols {{ nginx_ssl_protocols }};
-	include /etc/nginx/mime.types;
+	include {{ nginx_config_dir }}/mime.types;
 	default_type {{ nginx_default_type }};
 
 	types_hash_max_size 2048;
@@ -22,12 +22,12 @@ http {
 	error_log {{ nginx_log_dir}}/{{ nginx_error_log_name}};
 
 {% for k,v in nginx_http_params.iteritems() %}
-	{{ k }}  {{ v }};
+	{{ k }} {{ v }};
 {% endfor %}
 
-	include /etc/nginx/conf.d/*.conf;
-	include /etc/nginx/sites-enabled/*;
+	include {{ nginx_config_dir }}/conf.d/*.conf;
+	include {{ nginx_config_dir }}/sites-enabled/*;
 }
 {% if nginx_mail_params is defined and nginx_mail_servers is defined %}
-include /etc/nginx/mail.conf;
+include {{ nginx_config_dir }}/mail.conf;
 {% endif %}

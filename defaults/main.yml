@@ -8,6 +8,8 @@ nginx_use_letsencrypt: true
 
 nginx_manage_letsencrypt: true
 
+nginx_worker_processes: "{{ ansible_processor_count }}"
+
 nginx_max_clients: 512
 
 nginx_ssl_protocols: "TLSv1.2"
@@ -25,8 +27,9 @@ nginx_log_dir: "/var/log/nginx"
 nginx_access_log_name: "access.log"
 nginx_error_log_name: "error.log"
 nginx_separate_logs_per_site: True
-nginx_ssl_dir: "/etc/nginx/ssl"
+
 letsencrypt_ssl_dir: "/etc/letsencrypt/live/"
+
 nginx_upstreams: []
 nginx_sites:
   - file_name: foo
